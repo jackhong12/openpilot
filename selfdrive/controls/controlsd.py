@@ -16,6 +16,7 @@ from selfdrive.controls.lib.longcontrol import LongControl, STARTING_TARGET_SPEE
 from selfdrive.controls.lib.latcontrol_pid import LatControlPID
 from selfdrive.controls.lib.latcontrol_indi import LatControlINDI
 from selfdrive.controls.lib.latcontrol_lqr import LatControlLQR
+from selfdrive.controls.lib.latcontrol_craycray import LatControlCrayCray
 from selfdrive.controls.lib.events import Events, ET
 from selfdrive.controls.lib.alertmanager import AlertManager
 from selfdrive.controls.lib.vehicle_model import VehicleModel
@@ -107,6 +108,8 @@ class Controls:
       self.LaC = LatControlINDI(self.CP)
     elif self.CP.lateralTuning.which() == 'lqr':
       self.LaC = LatControlLQR(self.CP)
+    elif self.CP.lateralTuning.which() == 'craycray':
+      self.LaC = LatControlCrayCray(self.CP)
 
     self.state = State.disabled
     self.enabled = False
@@ -384,12 +387,22 @@ class Controls:
     angular_rates = self.sm['liveLocationKalman'].angularVelocityDevice.value
     if len(angular_rates):
       yaw_rate = angular_rates[2]
+      roll = self.sm['liveLocationKalman'].orientationNED.value[0]
     else:
       yaw_rate = 0
+      roll = 0
+
+    curv_factor = self.VM.curvature_factor(CS.vEgo)
+    sr = self.VM.sR
     craycray_deg_per_meter = math.degrees(yaw_rate)/(1e-2 + CS.vEgo)
-    craycray_steering_angle = -self.VM.sR * craycray_deg_per_meter / self.VM.curvature_factor(CS.vEgo)
-    #print(craycray_steering_angle, CS.steeringAngle)
-    actuators.steer, actuators.steerAngle, lac_log = self.LaC.update(self.active, CS, self.CP, path_plan, craycray_steering_angle)
+    craycray_steering_angle = -sr * craycray_deg_per_meter / curv_factor
+    if self.CP.lateralTuning.which() == 'craycray':
+      actuators.steer, actuators.steerAngle, lac_log = self.LaC.update(self.active, CS, self.CP,
+                                                                       path_plan, craycray_steering_angle,
+                                                                       roll, curv_factor, sr)
+    else:
+      actuators.steer, actuators.steerAngle, lac_log = self.LaC.update(self.active, CS, self.CP, path_plan, craycray_steering_angle,
+                                                                       roll, curv_factor, sr)
 
     # Check for difference between desired angle and angle for angle based control
     angle_control_saturated = self.CP.steerControlType == car.CarParams.SteerControlType.angle and \

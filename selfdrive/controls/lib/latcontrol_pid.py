@@ -15,7 +15,7 @@ class LatControlPID():
   def reset(self):
     self.pid.reset()
 
-  def update(self, active, CS, CP, path_plan, craycray_sa):
+  def update(self, active, CS, CP, path_plan, craycray_sa, x, y, z):
     pid_log = log.ControlsState.LateralPIDState.new_message()
     pid_log.steerAngle = float(craycray_sa)
     pid_log.steerRate = float(CS.steeringRate)

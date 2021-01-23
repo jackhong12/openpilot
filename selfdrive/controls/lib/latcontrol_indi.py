@@ -81,7 +81,7 @@ class LatControlINDI():
 
     return self.sat_count > self.sat_limit
 
-  def update(self, active, CS, CP, path_plan, craycray_sa):
+  def update(self, active, CS, CP, path_plan, craycray_sa, x, y, z):
     self.speed = CS.vEgo
     # Update Kalman filter
     y = np.array([[math.radians(craycray_sa)], [math.radians(CS.steeringRate)]])
